@@ -35,7 +35,20 @@ public class BukkitSchedulerAdapter extends AbstractJavaScheduler implements Sch
 
     public BukkitSchedulerAdapter(LPBukkitBootstrap bootstrap) {
         super(bootstrap);
-        this.sync = r -> bootstrap.getServer().getScheduler().scheduleSyncDelayedTask(bootstrap.getLoader(), r);
+        // Use the server's sync scheduler when possible. Some forks (or server states)
+        // may throw UnsupportedOperationException when scheduling via the Bukkit API
+        // from this thread/context. In that case, fall back to the internal async
+        // executor so the task still runs (avoid leaking the UOE).
+        this.sync = r -> {
+            try {
+                bootstrap.getServer().getScheduler().scheduleSyncDelayedTask(bootstrap.getLoader(), r);
+            } catch (UnsupportedOperationException e) {
+                // Fallback to the internal worker executor provided by AbstractJavaScheduler.
+                // This ensures the Runnable is still executed even if the platform scheduler
+                // rejects scheduling here.
+                BukkitSchedulerAdapter.this.async().execute(r);
+            }
+        };
     }
 
     @Override

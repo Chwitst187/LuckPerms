@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -175,7 +176,13 @@ public class LPBukkitBootstrap implements LuckPermsBootstrap, LoaderBootstrap, B
             this.plugin.enable();
 
             // schedule a task to update the 'serverStarting' flag
-            getServer().getScheduler().runTask(this.loader, () -> this.serverStarting = false);
+            try {
+                getServer().getScheduler().runTask(this.loader, () -> this.serverStarting = false);
+            } catch (UnsupportedOperationException e) {
+                // Some forks (e.g. Folia) may not support scheduling here - fall back to our internal scheduler.
+                // Use ~1 tick delay (50 ms) as a fallback so we don't flip the flag immediately during enable.
+                this.schedulerAdapter.asyncLater(() -> this.serverStarting = false, 50, TimeUnit.MILLISECONDS);
+            }
         } finally {
             this.enableLatch.countDown();
         }
