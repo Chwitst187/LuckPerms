@@ -240,20 +240,26 @@ public class BukkitConnectionListener extends AbstractConnectionListener impleme
 
         // perform unhooking from bukkit objects 1 tick later.
         // this allows plugins listening after us on MONITOR to still have intact permissions data
-        this.plugin.getBootstrap().getServer().getScheduler().runTaskLater(this.plugin.getLoader(), () -> {
-            // Remove the custom permissible
-            try {
-                PermissibleInjector.uninject(player, true);
-            } catch (Exception ex) {
-                this.plugin.getLogger().severe("Exception thrown when unloading permissions from " +
-                        player.getUniqueId() + " - " + player.getName(), ex);
-            }
+        // Use the platform SchedulerAdapter instead of calling the Bukkit scheduler directly.
+        // This avoids UnsupportedOperationException on forks like Folia. We schedule a small
+        // delay (~1 tick = 50ms) asynchronously, then switch to the platform's sync executor
+        // to perform the Bukkit-specific uninject / op handling on the main thread when possible.
+        this.plugin.getBootstrap().getScheduler().asyncLater(() ->
+                this.plugin.getBootstrap().getScheduler().sync().execute(() -> {
+                    // Remove the custom permissible
+                    try {
+                        PermissibleInjector.uninject(player, true);
+                    } catch (Exception ex) {
+                        this.plugin.getLogger().severe("Exception thrown when unloading permissions from " +
+                                player.getUniqueId() + " - " + player.getName(), ex);
+                    }
 
-            // Handle auto op
-            if (this.plugin.getConfiguration().get(ConfigKeys.AUTO_OP)) {
-                player.setOp(false);
-            }
-        }, 1L);
+                    // Handle auto op (only if plugin still enabled)
+                    if (this.plugin.getLoader().isEnabled() && this.plugin.getConfiguration().get(ConfigKeys.AUTO_OP)) {
+                        player.setOp(false);
+                    }
+                })
+        , 50, TimeUnit.MILLISECONDS);
     }
 
 }
