@@ -99,7 +99,7 @@ public class LPBukkitBootstrap implements LuckPermsBootstrap, LoaderBootstrap, B
     // if the plugin has been loaded on an incompatible version
     private boolean incompatibleVersion = false;
 
-    private final boolean folia = isFolia();
+    private final boolean folia = detectFolia();
 
     public LPBukkitBootstrap(JavaPlugin loader) {
         this.loader = loader;
@@ -398,7 +398,7 @@ public class LPBukkitBootstrap implements LuckPermsBootstrap, LoaderBootstrap, B
         }
     }
 
-    private static boolean isFolia() {
+    private static boolean detectFolia() {
         try {
             Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
             return true;
