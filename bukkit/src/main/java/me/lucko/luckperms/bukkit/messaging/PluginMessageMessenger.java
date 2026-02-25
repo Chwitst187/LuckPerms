@@ -28,14 +28,16 @@ package me.lucko.luckperms.bukkit.messaging;
 import com.google.common.collect.Iterables;
 import me.lucko.luckperms.bukkit.LPBukkitPlugin;
 import me.lucko.luckperms.common.messaging.pluginmsg.AbstractPluginMessageMessenger;
+import me.lucko.luckperms.common.plugin.scheduler.SchedulerTask;
 import net.luckperms.api.messenger.IncomingMessageConsumer;
 import net.luckperms.api.messenger.Messenger;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * An implementation of {@link Messenger} using the plugin messaging channels.
@@ -61,19 +63,22 @@ public class PluginMessageMessenger extends AbstractPluginMessageMessenger imple
 
     @Override
     protected void sendOutgoingMessage(byte[] buf) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                Collection<? extends Player> players = PluginMessageMessenger.this.plugin.getBootstrap().getServer().getOnlinePlayers();
-                Player p = Iterables.getFirst(players, null);
-                if (p == null) {
-                    return;
-                }
-
-                p.sendPluginMessage(PluginMessageMessenger.this.plugin.getLoader(), CHANNEL, buf);
-                cancel();
+        AtomicReference<SchedulerTask> taskRef = new AtomicReference<>();
+        SchedulerTask task = this.plugin.getBootstrap().getScheduler().asyncRepeating(() -> {
+            Collection<? extends Player> players = PluginMessageMessenger.this.plugin.getBootstrap().getServer().getOnlinePlayers();
+            Player p = Iterables.getFirst(players, null);
+            if (p == null) {
+                return;
             }
-        }.runTaskTimer(this.plugin.getLoader(), 1L, 100L);
+
+            PluginMessageMessenger.this.plugin.getBootstrap().executeSync(() -> p.sendPluginMessage(PluginMessageMessenger.this.plugin.getLoader(), CHANNEL, buf));
+
+            SchedulerTask scheduledTask = taskRef.get();
+            if (scheduledTask != null) {
+                scheduledTask.cancel();
+            }
+        }, 5, TimeUnit.SECONDS);
+        taskRef.set(task);
     }
 
     @Override

@@ -206,7 +206,7 @@ public class LPBukkitPlugin extends AbstractLuckPermsPlugin {
 
             // schedule another injection after all plugins have loaded
             // the entire pluginmanager instance is replaced by some plugins :(
-            this.bootstrap.getServer().getScheduler().runTaskLaterAsynchronously(this.bootstrap.getLoader(), injector, 1);
+            this.bootstrap.runAsyncLater(injector, 1L);
         }
 
         /*
@@ -268,7 +268,7 @@ public class LPBukkitPlugin extends AbstractLuckPermsPlugin {
 
         // remove all operators on startup if they're disabled
         if (!getConfiguration().get(ConfigKeys.OPS_ENABLED)) {
-            this.bootstrap.getServer().getScheduler().runTaskAsynchronously(this.bootstrap.getLoader(), () -> {
+            this.bootstrap.executeAsync(() -> {
                 for (OfflinePlayer player : this.bootstrap.getServer().getOperators()) {
                     player.setOp(false);
                 }
