@@ -6,6 +6,9 @@ website: https://luckperms.net
 main: me.lucko.luckperms.bukkit.loader.BukkitLegacyLoaderPlugin
 load: STARTUP
 
+# Required for Paper/Folia to allow the plugin to load.
+folia-supported: true
+
 # Load LuckPerms before Vault. This means that all plugins that (soft-)depend
 # on Vault depend on LuckPerms too.
 #

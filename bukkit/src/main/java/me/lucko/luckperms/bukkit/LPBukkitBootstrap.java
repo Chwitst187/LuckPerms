@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -98,6 +99,8 @@ public class LPBukkitBootstrap implements LuckPermsBootstrap, LoaderBootstrap, B
     // if the plugin has been loaded on an incompatible version
     private boolean incompatibleVersion = false;
 
+    private final boolean folia = isFolia();
+
     public LPBukkitBootstrap(JavaPlugin loader) {
         this.loader = loader;
 
@@ -119,6 +122,10 @@ public class LPBukkitBootstrap implements LuckPermsBootstrap, LoaderBootstrap, B
         return this.loader.getServer();
     }
 
+    public boolean isFolia() {
+        return this.folia;
+    }
+
     @Override
     public PluginLogger getPluginLogger() {
         return this.logger;
@@ -136,6 +143,85 @@ public class LPBukkitBootstrap implements LuckPermsBootstrap, LoaderBootstrap, B
 
     public ConsoleCommandSender getConsole() {
         return this.console;
+    }
+
+    public void executeSync(Runnable task) {
+        if (this.folia) {
+            try {
+                Object scheduler = getServer().getClass().getMethod("getGlobalRegionScheduler").invoke(getServer());
+                Method executeMethod = scheduler.getClass().getMethod("execute", org.bukkit.plugin.Plugin.class, Runnable.class);
+                executeMethod.invoke(scheduler, this.loader, task);
+                return;
+            } catch (ReflectiveOperationException e) {
+                this.logger.warn("Failed to execute task on Folia global region scheduler, falling back to Bukkit scheduler.", e);
+            }
+        }
+
+        getServer().getScheduler().scheduleSyncDelayedTask(this.loader, task);
+    }
+
+    public void executeAsync(Runnable task) {
+        if (this.folia) {
+            try {
+                Object scheduler = getServer().getClass().getMethod("getAsyncScheduler").invoke(getServer());
+                Method runNowMethod = scheduler.getClass().getMethod("runNow", org.bukkit.plugin.Plugin.class, java.util.function.Consumer.class);
+                runNowMethod.invoke(scheduler, this.loader, consumer(task));
+                return;
+            } catch (ReflectiveOperationException e) {
+                this.logger.warn("Failed to execute task on Folia async scheduler, falling back to Bukkit scheduler.", e);
+            }
+        }
+
+        getServer().getScheduler().runTaskAsynchronously(this.loader, task);
+    }
+
+    public void runAsyncLater(Runnable task, long ticksDelay) {
+        if (this.folia) {
+            try {
+                Object scheduler = getServer().getClass().getMethod("getAsyncScheduler").invoke(getServer());
+                Method runDelayedMethod = scheduler.getClass().getMethod("runDelayed", org.bukkit.plugin.Plugin.class, java.util.function.Consumer.class, long.class, TimeUnit.class);
+                runDelayedMethod.invoke(scheduler, this.loader, consumer(task), ticksDelay * 50L, TimeUnit.MILLISECONDS);
+                return;
+            } catch (ReflectiveOperationException e) {
+                this.logger.warn("Failed to delay task on Folia async scheduler, falling back to Bukkit scheduler.", e);
+            }
+        }
+
+        getServer().getScheduler().runTaskLaterAsynchronously(this.loader, task, ticksDelay);
+    }
+
+    public void runSyncLater(Runnable task, long ticksDelay) {
+        if (this.folia) {
+            try {
+                Object scheduler = getServer().getClass().getMethod("getGlobalRegionScheduler").invoke(getServer());
+                Method runDelayedMethod = scheduler.getClass().getMethod("runDelayed", org.bukkit.plugin.Plugin.class, java.util.function.Consumer.class, long.class);
+                runDelayedMethod.invoke(scheduler, this.loader, consumer(task), ticksDelay);
+                return;
+            } catch (ReflectiveOperationException e) {
+                this.logger.warn("Failed to delay task on Folia global region scheduler, falling back to Bukkit scheduler.", e);
+            }
+        }
+
+        getServer().getScheduler().runTaskLater(this.loader, task, ticksDelay);
+    }
+
+    public void runEntityTaskLater(Player player, Runnable task, long ticksDelay) {
+        if (this.folia) {
+            try {
+                Object scheduler = player.getClass().getMethod("getScheduler").invoke(player);
+                Method runDelayedMethod = scheduler.getClass().getMethod("runDelayed", org.bukkit.plugin.Plugin.class, java.util.function.Consumer.class, Runnable.class, long.class);
+                runDelayedMethod.invoke(scheduler, this.loader, consumer(task), null, ticksDelay);
+                return;
+            } catch (ReflectiveOperationException e) {
+                this.logger.warn("Failed to delay task on Folia entity scheduler, falling back to Bukkit scheduler.", e);
+            }
+        }
+
+        getServer().getScheduler().runTaskLater(this.loader, task, ticksDelay);
+    }
+
+    private static java.util.function.Consumer<Object> consumer(Runnable task) {
+        return ignored -> task.run();
     }
 
     // lifecycle
@@ -175,7 +261,7 @@ public class LPBukkitBootstrap implements LuckPermsBootstrap, LoaderBootstrap, B
             this.plugin.enable();
 
             // schedule a task to update the 'serverStarting' flag
-            getServer().getScheduler().runTask(this.loader, () -> this.serverStarting = false);
+            runSyncLater(() -> this.serverStarting = false, 1L);
         } finally {
             this.enableLatch.countDown();
         }
@@ -309,6 +395,15 @@ public class LPBukkitBootstrap implements LuckPermsBootstrap, LoaderBootstrap, B
             return false;
         } catch (Exception e) {
             return true;
+        }
+    }
+
+    private static boolean isFolia() {
+        try {
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 }
