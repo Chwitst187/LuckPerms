@@ -257,6 +257,11 @@ public class LPBukkitBootstrap implements LuckPermsBootstrap, LoaderBootstrap, B
         this.serverStarting = true;
         this.serverStopping = false;
         this.startTime = Instant.now();
+
+        if (this.folia) {
+            this.loader.getLogger().severe("Folia Support is extremly experimental. Dont expect it to work correctly");
+        }
+
         try {
             this.plugin.enable();
 
