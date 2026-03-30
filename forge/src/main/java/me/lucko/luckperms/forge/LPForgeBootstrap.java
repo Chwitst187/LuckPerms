@@ -35,6 +35,7 @@ import me.lucko.luckperms.common.plugin.classpath.JarInJarClassPathAppender;
 import me.lucko.luckperms.common.plugin.logging.Log4jPluginLogger;
 import me.lucko.luckperms.common.plugin.logging.PluginLogger;
 import me.lucko.luckperms.common.plugin.scheduler.SchedulerAdapter;
+import me.lucko.luckperms.common.util.BuildInfo;
 import net.luckperms.api.platform.Platform;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
@@ -204,7 +205,7 @@ public final class LPForgeBootstrap extends MinecraftLuckPermsBootstrap implemen
 
     @Override
     public String getVersion() {
-        return "@version@";
+        return BuildInfo.VERSION;
     }
 
     @Override
@@ -221,7 +222,7 @@ public final class LPForgeBootstrap extends MinecraftLuckPermsBootstrap implemen
 
     @Override
     public String getServerBrand() {
-        return ModList.get().getModContainerById("forge")
+        return ModList.getModContainerById("forge")
                 .map(ModContainer::getModInfo)
                 .map(IModInfo::getDisplayName)
                 .orElse("null");
@@ -229,7 +230,7 @@ public final class LPForgeBootstrap extends MinecraftLuckPermsBootstrap implemen
 
     @Override
     public String getServerVersion() {
-        String forgeVersion = ModList.get().getModContainerById("forge")
+        String forgeVersion = ModList.getModContainerById("forge")
                 .map(ModContainer::getModInfo)
                 .map(IModInfo::getVersion)
                 .map(ArtifactVersion::toString)

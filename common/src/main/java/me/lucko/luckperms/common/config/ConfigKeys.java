@@ -726,6 +726,11 @@ public final class ConfigKeys {
     public static final ConfigKey<String> NATS_PASSWORD = notReloadable(stringKey("nats.password", ""));
 
     /**
+     * The token in use by the nats server, or an empty string if there is no token
+     */
+    public static final ConfigKey<String> NATS_TOKEN = notReloadable(stringKey("nats.token", ""));
+
+    /**
      * If the nats connection should use SSL
      */
     public static final ConfigKey<Boolean> NATS_SSL = notReloadable(booleanKey("nats.ssl", false));
@@ -768,17 +773,12 @@ public final class ConfigKeys {
     /**
      * The URL of the bytebin instance used to upload data
      */
-    public static final ConfigKey<String> BYTEBIN_URL = stringKey("bytebin-url", "https://usercontent.luckperms.net/");
+    public static final ConfigKey<String> BYTEBIN_URL = notReloadable(stringKey("bytebin-url", "https://usercontent.luckperms.net/"));
 
     /**
-     * The host of the bytesocks instance used to communicate with
+     * The URL of the bytesocks instance used to communicate with
      */
-    public static final ConfigKey<String> BYTESOCKS_HOST = stringKey("bytesocks-host", "usersockets.luckperms.net");
-
-    /**
-     * If TLS (https/wss) should be used when connecting to bytesocks
-     */
-    public static final ConfigKey<Boolean> BYTESOCKS_USE_TLS = booleanKey("bytesocks-use-tls", true);
+    public static final ConfigKey<String> BYTESOCKS_URL = notReloadable(stringKey("bytesocks-url", "https://usersockets.luckperms.net/"));
 
     /**
      * The URL of the web editor
